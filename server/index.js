@@ -3,6 +3,13 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import managerRoutes from "./routes/managerRoutes.js";
+import menuRoutes from "./routes/menu.js";
+import tablesRoutes from "./routes/tables.js";
+import ordersRoutes from "./routes/orders.js";
+import settingsRoutes from "./routes/settings.js";
+import metricsRoutes from "./routes/metrics.js";
+import notFound from "./middlewares/notFound.js";
+import errorHandler from "./middlewares/errorHandler.js";
 import morgan from "morgan";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
@@ -26,6 +33,11 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/manager", managerRoutes);
+app.use("/api/menu", menuRoutes);
+app.use("/api/tables", tablesRoutes);
+app.use("/api/orders", ordersRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/metrics", metricsRoutes);
 
 // 404 and error handlers
 app.use(notFound);
