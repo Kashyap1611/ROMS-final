@@ -10,6 +10,7 @@ import { QrCode, Users, Circle } from 'lucide-react';
 import QRCode from 'qrcode';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 const TableManagement = () => {
   const { tables, orders, setTables } = useContext(AppContext);
@@ -104,17 +105,7 @@ const TableManagement = () => {
       return;
     }
     try {
-      const res = await fetch('/api/tables', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number, capacity })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Failed to add table');
-        return;
-      }
-      const created = await res.json();
+      const { data: created } = await axios.post('/api/tables', { number, capacity });
       const newTable = { id: created._id || created.id, ...created };
       setTables([...tables, newTable]);
       toast.success('Table added');
@@ -128,12 +119,7 @@ const TableManagement = () => {
 
   const removeTable = async (table) => {
     try {
-      const res = await fetch(`/api/tables/${table.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Failed to remove table');
-        return;
-      }
+      await axios.delete(`/api/tables/${table.id}`);
       setTables(tables.filter(t => t.id !== table.id));
       toast.success('Table removed');
     } catch {

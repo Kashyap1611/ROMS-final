@@ -114,60 +114,6 @@ const OrdersView = () => {
     toast.success(`Invoice PDF downloaded for Order #${order.id}`);
   };
   
-  const addSampleOrders = () => {
-    const now = Date.now();
-    const sample = [
-      {
-        id: 101,
-        tableNumber: 2,
-        timestamp: new Date(now - 1000 * 60 * 60 * 24).toISOString(),
-        status: 'pending',
-        total: 37.98,
-        items: [
-          { name: 'Grilled Salmon', price: 18.99, quantity: 2, image: 'https://images.unsplash.com/photo-1485921325833-c519f76c4927?w=200' }
-        ]
-      },
-      {
-        id: 102,
-        tableNumber: 5,
-        timestamp: new Date(now - 1000 * 60 * 60 * 48).toISOString(),
-        status: 'completed',
-        total: 24.48,
-        items: [
-          { name: 'Caesar Salad', price: 8.99, quantity: 1, image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=200' },
-          { name: 'Fresh Lemonade', price: 3.99, quantity: 2, image: 'https://images.unsplash.com/photo-1523677011781-c91d1bbe2f4d?w=200' }
-        ]
-      },
-      {
-        id: 103,
-        tableNumber: 7,
-        timestamp: new Date(now - 1000 * 60 * 60 * 3).toISOString(),
-        status: 'preparing',
-        total: 14.99,
-        items: [
-          { name: 'Beef Burger', price: 14.99, quantity: 1, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200' }
-        ]
-      },
-      {
-        id: 104,
-        tableNumber: 1,
-        timestamp: new Date(now - 1000 * 60 * 60 * 72).toISOString(),
-        status: 'completed',
-        total: 20.98,
-        items: [
-          { name: 'Tiramisu', price: 6.99, quantity: 1, image: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=200' },
-          { name: 'Iced Coffee', price: 4.49, quantity: 2, image: 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=200' }
-        ]
-      }
-    ];
-    setOrders(prev => {
-      const existingIds = new Set(prev.map(o => o.id));
-      const merged = [...prev, ...sample.filter(o => !existingIds.has(o.id))];
-      toast.success('Sample orders added');
-      return merged;
-    });
-  };
-  
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       const res = await axios.patch(`/api/orders/${orderId}/status`, { status: newStatus });
@@ -195,7 +141,7 @@ const OrdersView = () => {
   const getFilteredOrders = () => {
     if (filterStatus === 'all') return orders;
     if (filterStatus === 'active') {
-      return orders.filter(o => ['pending', 'confirmed', 'preparing', 'ready'].includes(o.status));
+      return orders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status));
     }
     const list = orders.filter(o => o.status === filterStatus);
     if (filterStatus === 'completed' && (fromDate || toDate)) {
@@ -216,7 +162,6 @@ const OrdersView = () => {
   const getStatusBadge = (status) => {
     const statusConfig = {
       pending: { label: 'Pending', className: 'status-pending', icon: Clock },
-      confirmed: { label: 'Confirmed', className: 'status-confirmed', icon: CheckCircle2 },
       preparing: { label: 'Preparing', className: 'status-preparing', icon: ChefHat },
       ready: { label: 'Ready', className: 'status-ready', icon: TrendingUp },
       completed: { label: 'Completed', className: 'status-completed', icon: CheckCircle2 }
@@ -235,8 +180,7 @@ const OrdersView = () => {
   
   const getNextStatus = (currentStatus) => {
     const statusFlow = {
-      pending: 'confirmed',
-      confirmed: 'preparing',
+      pending: 'preparing',
       preparing: 'ready',
       ready: 'completed'
     };
@@ -245,8 +189,7 @@ const OrdersView = () => {
   
   const getNextStatusLabel = (currentStatus) => {
     const labels = {
-      pending: 'Confirm Order',
-      confirmed: 'Start Preparing',
+      pending: 'Start Preparing',
       preparing: 'Mark as Ready',
       ready: 'Complete Order'
     };
@@ -255,7 +198,7 @@ const OrdersView = () => {
   
   const orderCounts = {
     all: orders.length,
-    active: orders.filter(o => ['pending', 'confirmed', 'preparing', 'ready'].includes(o.status)).length,
+    active: orders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status)).length,
     pending: orders.filter(o => o.status === 'pending').length,
     completed: orders.filter(o => o.status === 'completed').length
   };

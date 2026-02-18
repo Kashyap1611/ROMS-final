@@ -17,26 +17,51 @@ export const createOrder = async (req, res) => {
     if (!tableNumber || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "Invalid order" });
     }
+
     const itemsWithStatus = items.map((it) => ({ ...it, status: "pending" }));
-    const total = itemsWithStatus.reduce(
+    const newItemsTotal = itemsWithStatus.reduce(
       (sum, it) => sum + it.price * it.quantity,
       0
     );
-    const order = await Order.create({
+
+    // Check for existing active order for this table
+    let order = await Order.findOne({
       tableNumber,
-      items: itemsWithStatus,
-      total,
-      status: "pending",
-      timestamp: new Date(),
-      customerName: customerName || "Guest",
-      customerPhone: customerPhone || "",
+      status: { $ne: 'completed' }
     });
+
+    if (order) {
+      // Append new items to existing order
+      order.items.push(...itemsWithStatus);
+      order.total += newItemsTotal;
+      // If order was ready or prepared, move back to preparing since new items are pending
+      if (['ready', 'prepared'].includes(order.status)) {
+        order.status = 'preparing';
+      }
+      // If it was pending, it stays pending. If preparing, stays preparing.
+      // Ensure we update timestamp to reflect latest activity
+      order.timestamp = new Date();
+      await order.save();
+    } else {
+      // Create new order
+      order = await Order.create({
+        tableNumber,
+        items: itemsWithStatus,
+        total: newItemsTotal,
+        status: "pending",
+        timestamp: new Date(),
+        customerName: customerName || "Guest",
+        customerPhone: customerPhone || "",
+      });
+    }
+
     res.status(201).json(order);
     const io = req.app.get('io');
     if (io) {
       io.emit('orders:updated');
     }
   } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Failed to create order" });
   }
 };

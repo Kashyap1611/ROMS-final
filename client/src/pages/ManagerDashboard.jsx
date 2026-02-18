@@ -10,6 +10,7 @@ import MenuManagement from '../components/manager/MenuManagement';
 import TableManagement from '../components/manager/TableManagement';
 import Settings from '../components/manager/Settings';
 import KitchenDisplay from './KitchenDisplay';
+import CreateManagerTemp from './CreateManagerTemp';
 import { AppContext } from '../App';
 
 const ManagerDashboard = () => {
@@ -91,6 +92,7 @@ const ManagerDashboard = () => {
           <Route path="menu" element={<MenuManagement />} />
           <Route path="tables" element={<TableManagement />} />
           <Route path="settings" element={<Settings />} />
+          {/* <Route path="create-manager" element={<CreateManagerTemp />} /> */}
           <Route path="/" element={<Navigate to="/manager/dashboard" replace />} />
         </Routes>
       </div>

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../ui/switch';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, UtensilsCrossed } from 'lucide-react';
+import axios from 'axios';
 
 const MenuManagement = () => {
   const { menuItems, setMenuItems } = useContext(AppContext);
@@ -61,7 +62,7 @@ const MenuManagement = () => {
     setShowDialog(true);
   };
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.price) {
       toast.error('Please fill in all required fields');
       return;
@@ -73,33 +74,60 @@ const MenuManagement = () => {
       image: formData.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'
     };
     
-    if (editingItem) {
-      setMenuItems(menuItems.map(item => 
-        item.id === editingItem.id ? { ...item, ...itemData } : item
-      ));
-      toast.success('Menu item updated successfully');
-    } else {
-      const newItem = {
-        id: Date.now(),
-        ...itemData
-      };
-      setMenuItems([...menuItems, newItem]);
-      toast.success('Menu item added successfully');
+    try {
+      if (editingItem) {
+        const { data: updatedItem } = await axios.put(`/api/menu/${editingItem.id}`, itemData);
+        // Ensure id property exists for frontend compatibility
+        const normalizedItem = { id: updatedItem._id, ...updatedItem };
+        
+        setMenuItems(menuItems.map(item => 
+          item.id === editingItem.id ? normalizedItem : item
+        ));
+        toast.success('Menu item updated successfully');
+      } else {
+        const { data: newItem } = await axios.post('/api/menu', itemData);
+        // Ensure id property exists for frontend compatibility
+        const normalizedItem = { id: newItem._id, ...newItem };
+        
+        setMenuItems([...menuItems, normalizedItem]);
+        toast.success('Menu item added successfully');
+      }
+      
+      setShowDialog(false);
+      resetForm();
+    } catch (error) {
+      console.error('Error saving menu item:', error);
+      toast.error(error.message);
     }
+  };
+  
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`/api/menu/${id}`);
+      
+      setMenuItems(menuItems.filter(item => item.id !== id));
+      toast.success('Menu item deleted');
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      toast.error('Failed to delete menu item');
+    }
+  };
+  
+  const toggleAvailability = async (id) => {
+    const item = menuItems.find(i => i.id === id);
+    if (!item) return;
     
-    setShowDialog(false);
-    resetForm();
-  };
-  
-  const handleDelete = (id) => {
-    setMenuItems(menuItems.filter(item => item.id !== id));
-    toast.success('Menu item deleted');
-  };
-  
-  const toggleAvailability = (id) => {
-    setMenuItems(menuItems.map(item => 
-      item.id === id ? { ...item, available: !item.available } : item
-    ));
+    try {
+      const { data: updatedItem } = await axios.put(`/api/menu/${id}`, { available: !item.available });
+      const normalizedItem = { id: updatedItem._id, ...updatedItem };
+      
+      setMenuItems(menuItems.map(i => 
+        i.id === id ? normalizedItem : i
+      ));
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      toast.error('Failed to update availability');
+    }
   };
   
   const filteredItems = filterCategory === 'All' 

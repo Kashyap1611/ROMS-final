@@ -53,28 +53,52 @@ export const createManager = async (req, res) => {
 };
 
 const sendEmail = async (email, subject, text) => {
-  if (!process.env.SMTP_HOST) {
-    console.log(`[Mock Email] To: ${email}, Subject: ${subject}, Body: ${text}`);
-    return;
-  }
   try {
+    if (process.env.SMTP_HOST) {
+      const port = Number(process.env.SMTP_PORT) || 587;
+      const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port,
+        secure,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+      await transporter.sendMail({
+        from: '"ROMS Manager" <no-reply@roms.com>',
+        to: email,
+        subject,
+        text,
+      });
+      return { success: true };
+    }
+    const testAccount = await nodemailer.createTestAccount();
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: testAccount.user,
+        pass: testAccount.pass,
       },
     });
-    await transporter.sendMail({
-      from: '"ROMS Manager" <no-reply@roms.com>',
+    const info = await transporter.sendMail({
+      from: '"ROMS Manager (Dev)" <no-reply@roms.dev>',
       to: email,
       subject,
       text,
     });
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    if (previewUrl) {
+      console.log(`[Dev Email Preview] ${previewUrl}`);
+    }
+    return { success: true, previewUrl };
   } catch (error) {
     console.error('[Email Error]', error.message);
-    console.log(`[Fallback Mock Email] To: ${email}, Subject: ${subject}, Body: ${text}`);
+    console.log(`[Mock Email Fallback] To: ${email}, Subject: ${subject}, Body: ${text}`);
+    return { success: false };
   }
 };
 
@@ -90,8 +114,11 @@ export const forgotPassword = async (req, res) => {
     manager.resetOtpExpire = Date.now() + 10 * 60 * 1000; // 10 mins
     await manager.save();
 
-    await sendEmail(email, 'Password Reset OTP', `Your OTP is: ${otp}`);
-    res.json({ message: "OTP sent to email" });
+    const result = await sendEmail(email, 'Password Reset OTP', `Your OTP is: ${otp}`);
+    if (!result.success && process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ message: "Email service not configured" });
+    }
+    res.json({ message: "OTP sent to email", previewUrl: result.previewUrl });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

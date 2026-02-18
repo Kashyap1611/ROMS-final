@@ -10,6 +10,7 @@ import { Separator } from '../ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import axios from 'axios';
 
 const Settings = () => {
   const { orders, gstRate, setGstRate } = useContext(AppContext);
@@ -47,14 +48,19 @@ const Settings = () => {
     return { totalOrders, completedOrders, activeOrders, totalRevenue, gstCollected, grandIncome };
   }, [orders, gstRate]);
 
-  const handleGstUpdate = () => {
+  const handleGstUpdate = async () => {
     const value = parseFloat(localGst);
     if (isNaN(value) || value < 0 || value > 1) {
       toast.error('Enter GST as a decimal between 0 and 1');
       return;
     }
-    setGstRate(value);
-    toast.success('GST rate updated');
+    try {
+      await axios.patch('/api/settings/gst-rate', { value });
+      setGstRate(value);
+      toast.success('GST rate updated');
+    } catch {
+      toast.error('Failed to update GST rate');
+    }
   };
 
   const downloadRangeData = () => {

@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
+import axios from 'axios';
 
 const ManagerLogin = () => {
   const navigate = useNavigate();
@@ -51,17 +52,13 @@ const ManagerLogin = () => {
       return;
     }
     try {
-      const res = await fetch('/api/manager/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.message || 'Failed to send OTP');
-        return;
-      }
+      const res = await axios.post('/api/manager/forgot-password', { email: forgotEmail });
+      const data = res?.data || {};
       toast.success('OTP sent to email');
+      if (data.previewUrl) {
+        toast.info('Dev email preview URL available in server logs');
+        console.log('Email preview URL:', data.previewUrl);
+      }
       setStep(2);
     } catch {
       toast.error('Error sending OTP');
@@ -74,15 +71,7 @@ const ManagerLogin = () => {
       return;
     }
     try {
-      const res = await fetch('/api/manager/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail, otp })
-      });
-      if (!res.ok) {
-        toast.error('Invalid OTP');
-        return;
-      }
+      await axios.post('/api/manager/verify-otp', { email: forgotEmail, otp });
       toast.success('OTP verified');
       setStep(3);
     } catch {
@@ -96,15 +85,7 @@ const ManagerLogin = () => {
       return;
     }
     try {
-      const res = await fetch('/api/manager/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail, otp, newPassword })
-      });
-      if (!res.ok) {
-        toast.error('Failed to reset password');
-        return;
-      }
+      await axios.post('/api/manager/reset-password', { email: forgotEmail, otp, newPassword });
       toast.success('Password reset successful. Please login.');
       resetState();
     } catch {

@@ -27,7 +27,7 @@ const CustomerView = () => {
   const [customerDetails, setCustomerDetails] = useState({ name: '', phone: '' });
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [orderStatus, setOrderStatus] = useState('browsing');
-  const [sessionBatches, setSessionBatches] = useState([]);
+  const [sessionOrder, setSessionOrder] = useState(null);
   
   const categories = ['All', 'Appetizers', 'Main Course', 'Desserts', 'Beverages'];
   const [activeCategory, setActiveCategory] = useState('All');
@@ -42,6 +42,8 @@ const CustomerView = () => {
   const filteredMenu = activeCategory === 'All' 
     ? menuItems 
     : menuItems.filter(item => item.category === activeCategory);
+  
+  const sessionBatches = sessionOrder ? [sessionOrder] : [];
   
   const addToCart = (item) => {
     const existingItem = cart.find(cartItem => cartItem.id === item.id);
@@ -68,7 +70,7 @@ const CustomerView = () => {
   };
   
   const calculateCartTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const computeGrandSubtotal = () => sessionBatches.reduce((sum, b) => sum + b.total, 0);
+  const computeGrandSubtotal = () => sessionOrder ? sessionOrder.total : 0;
   const computeGrandGst = () => computeGrandSubtotal() * (gstRate || 0);
   const computeGrandTotal = () => computeGrandSubtotal() + computeGrandGst();
   
@@ -98,23 +100,24 @@ const CustomerView = () => {
         customerPhone: customerDetails.phone || ''
       };
       const res = await axios.post('/api/orders', payload);
-      const created = res?.data;
-      if (!created) {
+      const updated = res?.data;
+      if (!updated) {
         toast.error('Failed to place order');
         return;
       }
-      const id = created._id || created.id;
-      setSessionBatches(prev => [...prev, {
-        id,
-        items: created.items,
-        total: created.total,
-        status: created.status,
-        timestamp: created.timestamp
-      }]);
-      setOrders([...orders, { id, ...created }]);
-      const refresh = await axios.get('/api/orders');
-      const data = refresh?.data ?? [];
-      setOrders((data || []).map(o => ({ id: o._id || o.id, ...o })));
+      const id = updated._id || updated.id;
+      setSessionOrder({ id, ...updated });
+      
+      // Update local orders state
+      const existingIdx = orders.findIndex(o => (o._id || o.id) === id);
+      if (existingIdx >= 0) {
+        const newOrders = [...orders];
+        newOrders[existingIdx] = { id, ...updated };
+        setOrders(newOrders);
+      } else {
+        setOrders([...orders, { id, ...updated }]);
+      }
+
       setOrderStatus('ordered');
       setShowCart(false);
       setCart([]);
@@ -125,7 +128,7 @@ const CustomerView = () => {
   };
 
   const finishOrder = () => {
-    if (sessionBatches.length === 0) {
+    if (!sessionOrder) {
       toast.error('Place at least one order');
       return;
     }
@@ -133,26 +136,25 @@ const CustomerView = () => {
   };
   
   const generateInvoicePdf = () => {
+    if (!sessionOrder) return;
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text(`Invoice - Table #${tableId}`, 14, 20);
     doc.setFontSize(11);
     doc.text(`Date: ${new Date().toLocaleString()}`, 14, 28);
     const rows = [];
-    sessionBatches.forEach((b, idx) => {
-      b.items.forEach(it => {
-        rows.push([
-          `#${idx + 1}`,
-          it.name,
-          it.quantity,
-          `$${it.price.toFixed(2)}`,
-          `$${(it.price * it.quantity).toFixed(2)}`,
-          it.status.charAt(0).toUpperCase() + it.status.slice(1)
-        ]);
-      });
+    sessionOrder.items.forEach((it, idx) => {
+      rows.push([
+        `#${idx + 1}`,
+        it.name,
+        it.quantity,
+        `$${it.price.toFixed(2)}`,
+        `$${(it.price * it.quantity).toFixed(2)}`,
+        it.status.charAt(0).toUpperCase() + it.status.slice(1)
+      ]);
     });
     autoTable(doc, {
-      head: [['Batch', 'Item', 'Qty', 'Price', 'Subtotal', 'Status']],
+      head: [['#', 'Item', 'Qty', 'Price', 'Subtotal', 'Status']],
       body: rows,
       startY: 36
     });
@@ -174,9 +176,8 @@ const CustomerView = () => {
     
     generateInvoicePdf();
     try {
-      const active = [...orders].reverse().find(o => o.tableNumber === parseInt(tableId, 10) && o.status !== 'completed');
-      if (active) {
-        await axios.patch(`/api/orders/${active.id}/status`, { status: 'completed' });
+      if (sessionOrder) {
+        await axios.patch(`/api/orders/${sessionOrder.id}/status`, { status: 'completed' });
         const ordersRes = await axios.get('/api/orders');
         const latest = ordersRes?.data ?? [];
         setOrders((latest || []).map(o => ({ id: o._id || o.id, ...o })));
@@ -190,7 +191,7 @@ const CustomerView = () => {
     setShowCheckout(false);
     setShowBill(false);
     setOrderStatus('browsing');
-    setSessionBatches([]);
+    setSessionOrder(null);
     setCart([]);
     setCustomerDetails({ name: '', phone: '' });
     setPaymentMethod('card');
@@ -199,24 +200,37 @@ const CustomerView = () => {
   };
   
   const getStatusDisplay = () => {
-    const active = [...orders].reverse().find(o => o.tableNumber === parseInt(tableId, 10));
+    const active = sessionOrder || [...orders].reverse().find(o => o.tableNumber === parseInt(tableId, 10) && o.status !== 'completed');
     const preparedCount = active?.items?.filter(it => it.status === 'prepared').length || 0;
-    if (preparedCount > 0) {
+    if (preparedCount > 0 && active?.status !== 'completed') {
       return { text: `${preparedCount} item(s) serving soon`, color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 };
     }
     const statusConfig = {
       browsing: { text: 'Browse Menu', color: 'bg-muted text-muted-foreground', icon: Utensils },
-      ordered: { text: 'Order Placed - Awaiting Confirmation', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
+      ordered: { text: 'Order Placed - Waiting for Kitchen', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
+      pending: { text: 'Order Placed - Waiting for Kitchen', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
       preparing: { text: 'Kitchen is Preparing Your Order', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20', icon: Utensils },
       ready: { text: 'Order Ready - Please proceed to pay', color: 'bg-green-500/10 text-green-600 border-green-500/20', icon: CheckCircle2 },
       completed: { text: 'Order Completed', color: 'bg-primary/10 text-primary border-primary/20', icon: CheckCircle2 }
     };
-    return statusConfig[orderStatus] || statusConfig.browsing;
+    return statusConfig[orderStatus] || statusConfig[active?.status] || statusConfig.browsing;
   };
 
   React.useEffect(() => {
-    const active = [...orders].reverse().find(o => o.tableNumber === parseInt(tableId, 10));
-    if (!active) return;
+    const active = [...orders].reverse().find(o => o.tableNumber === parseInt(tableId, 10) && o.status !== 'completed');
+    if (!active) {
+       // Only clear if we really don't have an active order on server
+       if (sessionOrder && sessionOrder.status === 'completed') {
+          setSessionOrder(null);
+       }
+       return;
+    }
+    
+    // Sync sessionOrder with server state
+    if (!sessionOrder || sessionOrder.id !== active.id || sessionOrder.items.length !== active.items.length || sessionOrder.status !== active.status) {
+       setSessionOrder(active);
+    }
+
     const anyPrepared = active.items && active.items.some(it => it.status === 'prepared');
     if (active.status === 'pending' || active.status === 'confirmed') {
       setOrderStatus(anyPrepared ? 'preparing' : 'ordered');
@@ -229,24 +243,8 @@ const CustomerView = () => {
     }
   }, [orders, tableId]);
   
-  // Keep sessionBatches in sync with latest orders (items statuses, totals, timestamps)
-  React.useEffect(() => {
-    if (!sessionBatches || sessionBatches.length === 0) return;
-    const map = new Map(orders.map(o => [String(o.id), o]));
-    let changed = false;
-    const next = sessionBatches.map(b => {
-      const o = map.get(String(b.id));
-      if (!o) return b;
-      // Only update if something changed to avoid unnecessary renders
-      const shouldUpdate = b.total !== o.total || b.status !== o.status || b.timestamp !== o.timestamp || (Array.isArray(b.items) && Array.isArray(o.items) && b.items.length !== o.items.length) ;
-      if (shouldUpdate) {
-        changed = true;
-        return { ...b, items: o.items, total: o.total, status: o.status, timestamp: o.timestamp };
-      }
-      return b;
-    });
-    if (changed) setSessionBatches(next);
-  }, [orders, sessionBatches]);
+  // Removed old sessionBatches sync effect
+
   
   const StatusIcon = getStatusDisplay().icon;
   

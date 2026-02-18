@@ -10,7 +10,24 @@ import axios from 'axios';
 const KitchenDisplay = () => {
   const { orders, setOrders } = useContext(AppContext);
   const isPersistedId = (id) => typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id);
-  const activeOrders = orders.filter(o => ['confirmed', 'preparing'].includes(o.status) && isPersistedId(o.id));
+  const activeOrders = orders.filter(o => ['pending', 'preparing'].includes(o.status) && isPersistedId(o.id));
+
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const res = await axios.patch(`/api/orders/${orderId}/status`, { status: newStatus });
+      const updated = res?.data;
+      if (!updated) {
+        toast.error('Failed to update order status');
+        return;
+      }
+      const updatedId = updated._id || updated.id || orderId;
+      setOrders(prev => prev.map(o => o.id === updatedId ? { id: updatedId, ...updated } : o));
+      toast.success(`Order status updated to ${newStatus}`);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to update order status');
+    }
+  };
 
   const setItemStatus = async (order, index, status) => {
     try {
@@ -25,12 +42,17 @@ const KitchenDisplay = () => {
         return;
       }
       const updatedId = updated._id || updated.id || order.id;
-      setOrders(orders.map(o => o.id === updatedId ? { id: updatedId, ...updated } : o));
-      const refresh = await axios.get('/api/orders');
-      const data = refresh?.data ?? [];
-      setOrders((data || []).map(o => ({ id: o._id || o.id, ...o })));
+      setOrders(prev => prev.map(o => o.id === updatedId ? { id: updatedId, ...updated } : o));
+      
+      // Auto-update order to ready if all items are prepared
+      const allPrepared = updated.items.every(item => item.status === 'prepared');
+      if (allPrepared && updated.status !== 'ready') {
+        updateOrderStatus(updatedId, 'ready');
+      }
+
       toast.success(`Item updated to ${status}`);
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast.error('Failed to update item');
     }
   };
@@ -38,8 +60,8 @@ const KitchenDisplay = () => {
   const getItemBadge = (status) => {
     const map = {
       pending: { label: 'Pending', className: 'status-pending', icon: Clock },
-      confirmed: { label: 'Confirmed', className: 'status-confirmed', icon: CheckCircle2 },
-      prepared: { label: 'Prepared', className: 'status-preparing', icon: ChefHat },
+      preparing: { label: 'Preparing', className: 'status-preparing', icon: ChefHat },
+      prepared: { label: 'Prepared', className: 'status-confirmed', icon: CheckCircle2 },
     };
     const cfg = map[status] || map.pending;
     const Icon = cfg.icon;
@@ -61,7 +83,7 @@ const KitchenDisplay = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Kitchen Display</h1>
-              <p className="text-sm text-muted-foreground">Manage item statuses for confirmed orders</p>
+              <p className="text-sm text-muted-foreground">Manage orders and item preparation</p>
             </div>
           </div>
         </div>
@@ -71,7 +93,7 @@ const KitchenDisplay = () => {
         {activeOrders.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <ChefHat className="h-16 w-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg">No confirmed orders</p>
+            <p className="text-lg">No active orders</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -80,11 +102,23 @@ const KitchenDisplay = () => {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Table #{order.tableNumber}</CardTitle>
-                    <Badge className="status-confirmed">Confirmed</Badge>
+                    {order.status === 'pending' ? (
+                       <Badge className="status-pending">New Order</Badge>
+                    ) : (
+                       <Badge className="status-preparing">Preparing</Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     {new Date(order.timestamp).toLocaleString()}
                   </p>
+                  {order.status === 'pending' && (
+                    <Button 
+                      className="w-full mt-2 bg-primary"
+                      onClick={() => updateOrderStatus(order.id, 'preparing')}
+                    >
+                      Start Preparing
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
@@ -96,22 +130,15 @@ const KitchenDisplay = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {getItemBadge(it.status)}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setItemStatus(order, idx, 'confirmed')}
-                            disabled={!isPersistedId(order.id) || it.status !== 'pending'}
-                          >
-                            Confirm
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-primary"
-                            onClick={() => setItemStatus(order, idx, 'prepared')}
-                            disabled={!isPersistedId(order.id) || it.status === 'prepared'}
-                          >
-                            Prepared
-                          </Button>
+                          {order.status === 'preparing' && it.status !== 'prepared' && (
+                            <Button
+                              size="sm"
+                              className="bg-primary"
+                              onClick={() => setItemStatus(order, idx, 'prepared')}
+                            >
+                              Prepared
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
