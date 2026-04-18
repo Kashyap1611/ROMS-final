@@ -39,9 +39,10 @@ const CustomerView = () => {
     'Beverages': Coffee
   };
   
-  const filteredMenu = activeCategory === 'All' 
+  const filteredMenu = (activeCategory === 'All' 
     ? menuItems 
-    : menuItems.filter(item => item.category === activeCategory);
+    : menuItems.filter(item => item.category === activeCategory)
+  ).filter(item => item.available);
   
   const sessionBatches = sessionOrder ? [sessionOrder] : [];
   

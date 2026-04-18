@@ -43,6 +43,10 @@ export const createMenuItem = async (req, res) => {
     });
 
     const createdItem = await menuItem.save();
+    
+    const io = req.app.get('io');
+    if (io) io.emit('menu:updated');
+    
     res.status(201).json(createdItem);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -67,6 +71,10 @@ export const updateMenuItem = async (req, res) => {
       item.vegetarian = vegetarian !== undefined ? vegetarian : item.vegetarian;
 
       const updatedItem = await item.save();
+      
+      const io = req.app.get('io');
+      if (io) io.emit('menu:updated');
+      
       res.json(updatedItem);
     } else {
       res.status(404).json({ message: 'Menu item not found' });
@@ -84,6 +92,10 @@ export const deleteMenuItem = async (req, res) => {
 
     if (item) {
       await MenuItem.deleteOne({ _id: item._id });
+      
+      const io = req.app.get('io');
+      if (io) io.emit('menu:updated');
+      
       res.json({ message: 'Menu item removed' });
     } else {
       res.status(404).json({ message: 'Menu item not found' });

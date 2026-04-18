@@ -13,14 +13,15 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 const TableManagement = () => {
-  const { tables, orders, setTables } = useContext(AppContext);
+  const { tables, orders, setTables, maxCapacity } = useContext(AppContext);
   const [selectedTable, setSelectedTable] = useState(null);
   const [showQR, setShowQR] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [baseURL, setBaseURL] = useState();
   const [showAdd, setShowAdd] = useState(false);
-  const [formNumber, setFormNumber] = useState('');
   const [formCapacity, setFormCapacity] = useState('2');
+
+  const currentTotalCapacity = tables.reduce((sum, t) => sum + (Number(t.capacity) || 0), 0);
 
   const generateQRCode = async (tableNumber) => {
     try {
@@ -68,11 +69,11 @@ const TableManagement = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'available':
-        return 'text-success bg-success/10 border-success/20';
+        return 'text-green-700 bg-green-50 border-green-200 shadow-sm';
       case 'occupied':
-        return 'text-warning bg-warning/10 border-warning/20';
+        return 'text-white bg-amber-600 border-amber-700 shadow-sm';
       case 'reserved':
-        return 'text-blue-600 bg-blue-500/10 border-blue-500/20';
+        return 'text-blue-700 bg-blue-50 border-blue-200 shadow-sm';
       default:
         return 'text-muted-foreground bg-muted border-border';
     }
@@ -90,30 +91,48 @@ const TableManagement = () => {
   };
 
   const addTable = async () => {
-    const number = parseInt(formNumber, 10);
-    const capacity = parseInt(formCapacity, 10);
-    if (!Number.isInteger(number) || number <= 0) {
-      toast.error('Enter a valid table number');
+    const capacityNum = parseInt(formCapacity, 10);
+    if (isNaN(capacityNum) || capacityNum <= 0) {
+      toast.error('Please enter a valid seating capacity');
       return;
     }
-    if (!Number.isInteger(capacity) || capacity <= 0) {
-      toast.error('Enter a valid capacity');
-      return;
-    }
-    if (tables.some(t => t.number === number)) {
-      toast.error('Table number already exists');
-      return;
-    }
+    
     try {
-      const { data: created } = await axios.post('/api/tables', { number, capacity });
+      let response;
+      try {
+        // Try the new way (auto-numbering on updated server)
+        response = await axios.post('/api/tables', { capacity: capacityNum });
+      } catch (err) {
+        // Fallback for old server (if it requires 'number')
+        if (err.response?.status === 400 || err.response?.status === 404) {
+          console.warn("New table API failed or not found, trying fallback with sequential number");
+          
+          // Get current numbers and find next available
+          const nums = tables.map(t => Number(t.number)).filter(n => !isNaN(n));
+          const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+          
+          response = await axios.post('/api/tables', { 
+            number: nextNum, 
+            capacity: capacityNum 
+          });
+        } else {
+          throw err;
+        }
+      }
+
+      const created = response.data;
       const newTable = { id: created._id || created.id, ...created };
-      setTables([...tables, newTable]);
-      toast.success('Table added');
-    } catch {
-      toast.error('Failed to add table');
+      setTables(prev => {
+        const updated = [...prev, newTable];
+        return updated.sort((a, b) => a.number - b.number);
+      });
+      toast.success(`Table ${newTable.number} added successfully (Backward Compatibility)`);
+    } catch (err) {
+      console.error("Error adding table:", err);
+      const errMsg = err.response?.data?.error || err.message || 'Failed to add table';
+      toast.error(errMsg);
     }
     setShowAdd(false);
-    setFormNumber('');
     setFormCapacity('2');
   };
 
@@ -130,7 +149,7 @@ const TableManagement = () => {
   return (
     <div className="space-y-6 page-transition">
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm text-muted-foreground">Total Tables</CardTitle>
@@ -161,6 +180,17 @@ const TableManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">{tableStats.reserved}</div>
+          </CardContent>
+        </Card>
+        <Card className={currentTotalCapacity >= maxCapacity ? 'border-destructive bg-destructive/5' : ''}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm text-muted-foreground">Total Capacity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-3xl font-bold ${currentTotalCapacity >= maxCapacity ? 'text-destructive' : 'text-primary'}`}>
+              {currentTotalCapacity}/{maxCapacity}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">Seating limit</p>
           </CardContent>
         </Card>
       </div>
@@ -230,20 +260,37 @@ const TableManagement = () => {
         <DialogContent className="max-w-md w-[90vw] sm:w-auto">
           <DialogHeader>
             <DialogTitle>Add Table</DialogTitle>
-            <DialogDescription>Enter details to create a new table</DialogDescription>
+            <DialogDescription>
+              Tables are numbered automatically in sequence.
+              Current total capacity: {currentTotalCapacity}/{maxCapacity}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="table-number">Table Number</Label>
-              <Input id="table-number" type="number" value={formNumber} onChange={(e) => setFormNumber(e.target.value)} placeholder="e.g. 12" />
+              <Label htmlFor="table-capacity">Seating Capacity</Label>
+              <Input 
+                id="table-capacity" 
+                type="number" 
+                value={formCapacity} 
+                onChange={(e) => setFormCapacity(e.target.value)} 
+                placeholder="e.g. 4" 
+                min="1"
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="table-capacity">Capacity</Label>
-              <Input id="table-capacity" type="number" value={formCapacity} onChange={(e) => setFormCapacity(e.target.value)} placeholder="e.g. 4" />
-            </div>
+            {currentTotalCapacity + parseInt(formCapacity || 0) > maxCapacity && (
+              <p className="text-xs text-destructive font-medium">
+                Warning: Adding this table will exceed the restaurant's maximum capacity ({maxCapacity}).
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button className="bg-primary" onClick={addTable}>Add</Button>
+              <Button 
+                className="bg-primary" 
+                onClick={addTable}
+                disabled={currentTotalCapacity + parseInt(formCapacity || 0) > maxCapacity}
+              >
+                Add Table
+              </Button>
             </div>
           </div>
         </DialogContent>

@@ -13,6 +13,7 @@ export const AppContext = React.createContext();
 function App() {
 
   const [gstRate, setGstRate] = useState(0.05);
+  const [maxCapacity, setMaxCapacity] = useState(50);
   const [orders, setOrders] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [tables, setTables] = useState([]);
@@ -22,25 +23,34 @@ function App() {
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        const [menuRes, tablesRes, ordersRes, settingsRes] = await Promise.all([
+        const results = await Promise.allSettled([
           axios.get('/api/menu'),
           axios.get('/api/tables'),
           axios.get('/api/orders'),
           axios.get('/api/settings')
         ]);
-        const [menuJson, tablesJson, ordersJson, settingsJson] = [
-          menuRes?.data ?? [],
-          tablesRes?.data ?? [],
-          ordersRes?.data ?? [],
-          settingsRes?.data ?? {}
-        ];
-        setMenuItems((menuJson || []).map(i => ({ id: i._id || i.id, ...i })));
-        setTables((tablesJson || []).map(t => ({ id: t._id || t.id, ...t })));
-        setOrders((ordersJson || []).map(o => ({ id: o._id || o.id, ...o })));
-        if (settingsJson && typeof settingsJson.gstRate === 'number') {
-          setGstRate(settingsJson.gstRate);
+
+        const [menuRes, tablesRes, ordersRes, settingsRes] = results;
+
+        if (menuRes.status === 'fulfilled') {
+          const data = menuRes.value.data || [];
+          setMenuItems(data.map(i => ({ id: i._id || i.id, ...i })));
+        }
+        if (tablesRes.status === 'fulfilled') {
+          const data = tablesRes.value.data || [];
+          setTables(data.map(t => ({ id: t._id || t.id, ...t })));
+        }
+        if (ordersRes.status === 'fulfilled') {
+          const data = ordersRes.value.data || [];
+          setOrders(data.map(o => ({ id: o._id || o.id, ...o })));
+        }
+        if (settingsRes.status === 'fulfilled') {
+          const data = settingsRes.value.data || {};
+          if (data.gstRate !== undefined) setGstRate(Number(data.gstRate));
+          if (data.maxCapacity !== undefined) setMaxCapacity(Number(data.maxCapacity));
         }
       } catch (e) {
+        console.error("Error in loadData:", e);
       }
     };
     loadData();
@@ -59,20 +69,33 @@ function App() {
         setTables((data || []).map(t => ({ id: t._id || t.id, ...t })));
       } catch {}
     };
+    const refreshMenu = async () => {
+      try {
+        const res = await axios.get('/api/menu');
+        const data = res?.data ?? [];
+        setMenuItems((data || []).map(i => ({ id: i._id || i.id, ...i })));
+      } catch {}
+    };
+
     const onOrdersUpdated = () => { refreshOrders(); };
     const onTablesUpdated = () => { refreshTables(); };
+    const onMenuUpdated = () => { refreshMenu(); };
+
     socket.on('orders:updated', onOrdersUpdated);
     socket.on('order:itemUpdated', onOrdersUpdated);
     socket.on('tables:updated', onTablesUpdated);
+    socket.on('menu:updated', onMenuUpdated);
+
     // Refresh on focus/visibility change
-    const onFocus = () => { refreshOrders(); refreshTables(); };
-    const onVisibility = () => { if (document.visibilityState === 'visible') { refreshOrders(); refreshTables(); } };
+    const onFocus = () => { refreshOrders(); refreshTables(); refreshMenu(); };
+    const onVisibility = () => { if (document.visibilityState === 'visible') { refreshOrders(); refreshTables(); refreshMenu(); } };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       socket.off('orders:updated', onOrdersUpdated);
       socket.off('order:itemUpdated', onOrdersUpdated);
       socket.off('tables:updated', onTablesUpdated);
+      socket.off('menu:updated', onMenuUpdated);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
     };
@@ -111,6 +134,8 @@ function App() {
     setTables,
     gstRate,
     setGstRate,
+    maxCapacity,
+    setMaxCapacity,
     isManagerAuthenticated,
     loginManager,
     logoutManager

@@ -13,12 +13,21 @@ import autoTable from 'jspdf-autotable';
 import axios from 'axios';
 
 const Settings = () => {
-  const { orders, gstRate, setGstRate } = useContext(AppContext);
+  const { orders, gstRate, setGstRate, maxCapacity, setMaxCapacity } = useContext(AppContext);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [localGst, setLocalGst] = useState(gstRate);
+  const [localMaxCapacity, setLocalMaxCapacity] = useState(maxCapacity);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDialog, setShowOrderDialog] = useState(false);
+
+  React.useEffect(() => {
+    setLocalGst(gstRate);
+  }, [gstRate]);
+
+  React.useEffect(() => {
+    setLocalMaxCapacity(maxCapacity);
+  }, [maxCapacity]);
   
   const filteredOrders = useMemo(() => {
     const fromMs = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : -Infinity;
@@ -47,6 +56,49 @@ const Settings = () => {
     const grandIncome = totalRevenue + gstCollected;
     return { totalOrders, completedOrders, activeOrders, totalRevenue, gstCollected, grandIncome };
   }, [orders, gstRate]);
+
+  const handleSettingsUpdate = async () => {
+    const gstValue = parseFloat(localGst);
+    const capValue = parseInt(localMaxCapacity);
+
+    if (isNaN(gstValue) || gstValue < 0 || gstValue > 1) {
+      toast.error('Enter GST as a decimal between 0 and 1');
+      return;
+    }
+    if (isNaN(capValue) || capValue <= 0) {
+      toast.error('Enter a valid maximum capacity');
+      return;
+    }
+
+    try {
+      // Try the new unified patch first
+      let response;
+      try {
+        response = await axios.patch('/api/settings', { gstRate: gstValue, maxCapacity: capValue });
+      } catch (err) {
+        // Fallback for old server (404 on /api/settings)
+        if (err.response?.status === 404) {
+          console.warn("New settings API not found, falling back to GST-only update");
+          response = await axios.patch('/api/settings/gst-rate', { value: gstValue });
+        } else {
+          throw err;
+        }
+      }
+
+      const data = response.data;
+      const newGst = Number(data.gstRate ?? gstValue);
+      const newCap = Number(data.maxCapacity ?? maxCapacity);
+      
+      setGstRate(newGst);
+      setMaxCapacity(newCap);
+      setLocalGst(newGst);
+      setLocalMaxCapacity(newCap);
+      toast.success('Settings updated (Max Capacity only works on updated servers)');
+    } catch (err) {
+      console.error("Error updating settings:", err);
+      toast.error(err.response?.data?.error || err.message || 'Failed to update settings');
+    }
+  };
 
   const handleGstUpdate = async () => {
     const value = parseFloat(localGst);
@@ -157,17 +209,32 @@ const Settings = () => {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="bg-card border rounded-lg p-4">
-              <p className="text-sm text-muted-foreground mb-2">GST Rate</p>
-              <div className="flex items-end gap-3">
-                <div className="w-40">
-                  <Input type="number" step="0.01" min="0" max="1" value={localGst} onChange={(e) => setLocalGst(e.target.value)} />
+              <p className="text-sm text-muted-foreground mb-2">Business Settings</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">GST Rate (decimal, e.g., 0.05)</label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-full">
+                      <Input type="number" step="0.01" min="0" max="1" value={localGst} onChange={(e) => setLocalGst(e.target.value)} />
+                    </div>
+                    <div className="text-sm w-12 text-right">
+                      <span className="font-semibold">{(parseFloat(localGst || 0) * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm">
-                  <span className="font-semibold">{(parseFloat(localGst || 0) * 100).toFixed(0)}%</span>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Restaurant Seating Capacity</label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-full">
+                      <Input type="number" min="1" value={localMaxCapacity} onChange={(e) => setLocalMaxCapacity(e.target.value)} />
+                    </div>
+                    <div className="text-sm w-12 text-right">
+                      <span className="font-semibold">{localMaxCapacity}</span>
+                    </div>
+                  </div>
                 </div>
-                <Button className="bg-primary" onClick={handleGstUpdate}>Update</Button>
+                <Button className="w-full bg-primary" onClick={handleSettingsUpdate}>Save All Settings</Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">Enter as decimal (e.g., 0.05 = 5%)</p>
             </div>
 
             <div className="bg-card border rounded-lg p-4">

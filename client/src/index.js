@@ -4,10 +4,11 @@ import './index.css';
 import App from './App';
 import axios from 'axios';
 
-const apiUrl = process.env.REACT_APP_API_URL;
-if (apiUrl) {
-  axios.defaults.baseURL = apiUrl;
-}
+const apiUrl = process.env.REACT_APP_API_URL || '/api';
+console.log(`[ROMS] API Mode: ${apiUrl === '/api' ? 'Local Proxy' : 'Remote Server'}`);
+console.log(`[ROMS] Base URL: ${apiUrl}`);
+
+axios.defaults.baseURL = apiUrl;
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
