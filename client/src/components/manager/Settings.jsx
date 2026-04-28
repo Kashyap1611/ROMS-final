@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
-import { DollarSign, ShoppingBag, TrendingUp, CalendarRange } from 'lucide-react';
+import { IndianRupee, ShoppingBag, TrendingUp, CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 import { Separator } from '../ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
@@ -144,7 +144,7 @@ const Settings = () => {
     toast.success('Report downloaded');
   };
   
-  const formatCurrency = (n) => `$${n.toFixed(2)}`;
+  const formatCurrency = (n) => `₹${n.toFixed(2)}`;
   const downloadInvoice = (order) => {
     const doc = new jsPDF();
     const dateStr = new Date(order.timestamp).toLocaleString();
@@ -155,7 +155,7 @@ const Settings = () => {
     doc.text(`${dateStr}`, 105, 28, { align: 'center' });
     const gst = order.total * gstRate;
     const grand = order.total + gst;
-    const rows = order.items.map(i => [i.name, String(i.quantity), `$${i.price.toFixed(2)}`, `$${(i.price * i.quantity).toFixed(2)}`]);
+    const rows = order.items.map(i => [i.name, String(i.quantity), `₹${i.price.toFixed(2)}`, `₹${(i.price * i.quantity).toFixed(2)}`]);
     autoTable(doc, {
       startY: 36,
       head: [['Item','Qty','Price','Amount']],
@@ -182,17 +182,17 @@ const Settings = () => {
             <div className="bg-card border rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total Revenue</span>
-                <DollarSign className="h-4 w-4 text-success" />
+                <IndianRupee className="h-4 w-4 text-success" />
               </div>
-              <div className="text-2xl font-bold mt-2">${stats.totalRevenue.toFixed(2)}</div>
-              <Badge className="mt-2 bg-success/10 text-success border-success/20">GST ${stats.gstCollected.toFixed(2)}</Badge>
+              <div className="text-2xl font-bold mt-2">₹{stats.totalRevenue.toFixed(2)}</div>
+              <Badge className="mt-2 bg-success/10 text-success border-success/20">GST ₹{stats.gstCollected.toFixed(2)}</Badge>
             </div>
             <div className="bg-card border rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Grand Income</span>
                 <TrendingUp className="h-4 w-4 text-primary" />
               </div>
-              <div className="text-2xl font-bold mt-2">${stats.grandIncome.toFixed(2)}</div>
+              <div className="text-2xl font-bold mt-2">₹{stats.grandIncome.toFixed(2)}</div>
               <Badge className="mt-2 bg-primary/10 text-primary border-primary/20">Incl. GST</Badge>
             </div>
             <div className="bg-card border rounded-lg p-4">

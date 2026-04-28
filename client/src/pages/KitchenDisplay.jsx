@@ -7,7 +7,7 @@ import { ChefHat, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
-const KitchenDisplay = () => {
+const KitchenDisplay = ({ hideHeader = false }) => {
   const { orders, setOrders } = useContext(AppContext);
   const isPersistedId = (id) => typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id);
   const activeOrders = orders.filter(o => ['pending', 'preparing'].includes(o.status) && isPersistedId(o.id));
@@ -74,22 +74,24 @@ const KitchenDisplay = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
-      <div className="bg-card border-b sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <ChefHat className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Kitchen Display</h1>
-              <p className="text-sm text-muted-foreground">Manage orders and item preparation</p>
+    <div className={hideHeader ? "" : "min-h-screen bg-gradient-to-br from-background via-muted/20 to-background"}>
+      {!hideHeader && (
+        <div className="bg-card border-b sticky top-0 z-40 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                <ChefHat className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Kitchen Display</h1>
+                <p className="text-sm text-muted-foreground">Manage orders and item preparation</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className={hideHeader ? "" : "max-w-7xl mx-auto px-4 py-8"}>
         {activeOrders.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <ChefHat className="h-16 w-16 mx-auto mb-4 opacity-50" />

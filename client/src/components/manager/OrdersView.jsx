@@ -18,7 +18,7 @@ const OrdersView = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const formatCurrency = (n) => `$${n.toFixed(2)}`;
+  const formatCurrency = (n) => `₹${n.toFixed(2)}`;
   const calculateTotals = (order) => {
     const subtotal = order.total;
     const gst = subtotal * gstRate;
@@ -99,17 +99,17 @@ const OrdersView = () => {
     doc.text(`${dateStr}`, 105, 28, { align: 'center' });
     const gst = order.total * gstRate;
     const grand = order.total + gst;
-    const rows = order.items.map(i => [i.name, String(i.quantity), `$${i.price.toFixed(2)}`, `$${(i.price * i.quantity).toFixed(2)}`]);
+    const rows = order.items.map(i => [i.name, String(i.quantity), `₹${i.price.toFixed(2)}`, `₹${(i.price * i.quantity).toFixed(2)}`]);
     autoTable(doc, {
       startY: 36,
       head: [['Item','Qty','Price','Amount']],
       body: rows
     });
     const endY = doc.lastAutoTable.finalY || 36;
-    doc.text(`Subtotal: $${order.total.toFixed(2)}`, 14, endY + 10);
-    doc.text(`GST (${(gstRate*100).toFixed(0)}%): $${gst.toFixed(2)}`, 14, endY + 16);
+    doc.text(`Subtotal: ₹${order.total.toFixed(2)}`, 14, endY + 10);
+    doc.text(`GST (${(gstRate*100).toFixed(0)}%): ₹${gst.toFixed(2)}`, 14, endY + 16);
     doc.setFontSize(13);
-    doc.text(`Grand Total: $${grand.toFixed(2)}`, 14, endY + 24);
+    doc.text(`Grand Total: ₹${grand.toFixed(2)}`, 14, endY + 24);
     doc.save(`invoice-${order.id}.pdf`);
     toast.success(`Invoice PDF downloaded for Order #${order.id}`);
   };
@@ -297,7 +297,7 @@ const OrdersView = () => {
                     </div>
                     
                     <div className="pt-3 border-t flex items-center justify-between">
-                      <span className="font-bold text-xl text-primary">{formatCurrency(order.total)}</span>
+                      <span className="font-bold text-xl text-primary">₹{order.total.toFixed(2)}</span>
                       {order.status !== 'completed' ? (
                         <Button 
                           size="sm" 
@@ -368,11 +368,11 @@ const OrdersView = () => {
                         <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-md" />
                         <div className="flex-1">
                           <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">${item.price.toFixed(2)} each</p>
+                          <p className="text-sm text-muted-foreground">₹{item.price.toFixed(2)} each</p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                          <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                          <p className="font-semibold">₹{(item.price * item.quantity).toFixed(2)}</p>
                         </div>
                       </div>
                     ))}

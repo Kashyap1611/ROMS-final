@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { AppContext } from '../../App';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { ShoppingBag, Users, DollarSign, TrendingUp, Clock } from 'lucide-react';
+import { ShoppingBag, Users, IndianRupee, TrendingUp, Clock } from 'lucide-react';
 
 const Dashboard = () => {
   const { orders, menuItems, tables } = useContext(AppContext);
@@ -50,9 +50,9 @@ const Dashboard = () => {
   const stats = [
     {
       title: 'Revenue (Today)',
-      value: `$${dayRevenue.toFixed(2)}`,
-      sub: `This week: $${weekRevenue.toFixed(2)}`,
-      icon: DollarSign,
+      value: `₹${dayRevenue.toFixed(2)}`,
+      sub: `This week: ₹${weekRevenue.toFixed(2)}`,
+      icon: IndianRupee,
       color: 'text-success',
       bgColor: 'bg-success/10'
     },
@@ -150,7 +150,7 @@ const Dashboard = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg">${order.total.toFixed(2)}</p>
+                      <p className="font-bold text-lg">₹{order.total.toFixed(2)}</p>
                     </div>
                   </div>
                 ))}

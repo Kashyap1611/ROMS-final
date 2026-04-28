@@ -208,7 +208,7 @@ const MenuManagement = () => {
                     <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{item.description}</p>
                   </CardHeader>
                   <CardFooter className="flex items-center justify-between pt-0">
-                    <span className="text-xl font-bold text-primary">${item.price.toFixed(2)}</span>
+                    <span className="text-xl font-bold text-primary">₹{item.price.toFixed(2)}</span>
                     <div className="flex gap-2">
                       <Button 
                         size="icon" 
@@ -276,7 +276,7 @@ const MenuManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="price">Price ($) *</Label>
+                <Label htmlFor="price">Price *</Label>
                 <Input
                   id="price"
                   type="number"

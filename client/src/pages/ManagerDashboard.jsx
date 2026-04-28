@@ -16,17 +16,21 @@ import { AppContext } from '../App';
 const ManagerDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isManagerAuthenticated, logoutManager } = useContext(AppContext);
+  const { isManagerAuthenticated, userRole, logoutManager } = useContext(AppContext);
+  
   useEffect(() => {
-    if (!isManagerAuthenticated) navigate('/login', { replace: true });
-  }, [isManagerAuthenticated, navigate]);
+    if (!isManagerAuthenticated) {
+      navigate('/login', { replace: true });
+    } else if (userRole === 'kitchen') {
+      navigate('/kitchen/dashboard', { replace: true });
+    }
+  }, [isManagerAuthenticated, userRole, navigate]);
   
   const currentPath = location.pathname.split('/').pop() || 'dashboard';
   
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/manager/dashboard' },
     { id: 'orders', label: 'Orders', icon: ChefHat, path: '/manager/orders' },
-    { id: 'kitchen', label: 'Kitchen', icon: ChefHat, path: '/manager/kitchen' },
     { id: 'menu', label: 'Menu', icon: MenuIcon, path: '/manager/menu' },
     { id: 'tables', label: 'Tables', icon: QrCode, path: '/manager/tables' },
     { id: 'settings', label: 'Settings', icon: SettingsIcon, path: '/manager/settings' },
@@ -88,7 +92,6 @@ const ManagerDashboard = () => {
         <Routes>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="orders" element={<OrdersView />} />
-          <Route path="kitchen" element={<KitchenDisplay />} />
           <Route path="menu" element={<MenuManagement />} />
           <Route path="tables" element={<TableManagement />} />
           <Route path="settings" element={<Settings />} />

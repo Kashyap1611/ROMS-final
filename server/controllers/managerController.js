@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 
 // Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
 };
@@ -28,7 +28,8 @@ export const loginManager = async (req, res) => {
     res.json({
       _id: manager._id,
       email: manager.email,
-      token: generateToken(manager._id),
+      role: manager.role || "manager",
+      token: generateToken(manager._id, manager.role || "manager"),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -37,17 +38,22 @@ export const loginManager = async (req, res) => {
 
 // @route   POST /api/manager/create (optional – admin only)
 export const createManager = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, role, name } = req.body;
 
   const managerExists = await Manager.findOne({ email });
   if (managerExists) {
-    return res.status(400).json({ message: "Manager already exists" });
+    return res.status(400).json({ message: "User already exists" });
   }
 
-  const manager = await Manager.create({ email, password });
+  const manager = await Manager.create({ 
+    email, 
+    password, 
+    role: role || "manager",
+    name: name || (role === "kitchen" ? "Kitchen Staff" : "Manager")
+  });
 
   res.status(201).json({
-    message: "Manager created successfully",
+    message: `${manager.role === 'kitchen' ? 'Kitchen' : 'Manager'} user created successfully`,
     managerId: manager._id,
   });
 };

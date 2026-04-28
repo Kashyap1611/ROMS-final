@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import CustomerView from './pages/CustomerView';
 import ManagerDashboard from './pages/ManagerDashboard';
+import KitchenDashboard from './pages/KitchenDashboard';
 import ManagerLogin from './pages/ManagerLogin';
+import KitchenLogin from './pages/KitchenLogin';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 import socket from './socket';
@@ -20,6 +22,10 @@ function App() {
   const [isManagerAuthenticated, setIsManagerAuthenticated] = useState(
     !!localStorage.getItem('roms_token')
   );
+  const [userRole, setUserRole] = useState(
+    localStorage.getItem('roms_role') || ''
+  );
+
   React.useEffect(() => {
     const loadData = async () => {
       try {
@@ -107,22 +113,51 @@ function App() {
       const res = await axios.post('/api/manager/login', { email, password });
       if (!res || !res.data) {
         setIsManagerAuthenticated(false);
+        setUserRole('');
+        return null;
+      }
+      const data = res.data;
+      localStorage.setItem('roms_token', data.token || '');
+      localStorage.setItem('roms_user', JSON.stringify({ email: data.email, _id: data._id }));
+      localStorage.setItem('roms_role', data.role || 'manager');
+      setIsManagerAuthenticated(true);
+      setUserRole(data.role || 'manager');
+      return data.role || 'manager';
+    } catch (e) {
+      setIsManagerAuthenticated(false);
+      setUserRole('');
+      return null;
+    }
+  };
+
+  const loginKitchen = async (email, password) => {
+    try {
+      const res = await axios.post('/api/kitchen/login', { email, password });
+      if (!res || !res.data) {
+        setIsManagerAuthenticated(false);
+        setUserRole('');
         return false;
       }
       const data = res.data;
       localStorage.setItem('roms_token', data.token || '');
       localStorage.setItem('roms_user', JSON.stringify({ email: data.email, _id: data._id }));
+      localStorage.setItem('roms_role', 'kitchen');
       setIsManagerAuthenticated(true);
+      setUserRole('kitchen');
       return true;
     } catch (e) {
       setIsManagerAuthenticated(false);
+      setUserRole('');
       return false;
     }
   };
+
   const logoutManager = () => {
     localStorage.removeItem('roms_token');
     localStorage.removeItem('roms_user');
+    localStorage.removeItem('roms_role');
     setIsManagerAuthenticated(false);
+    setUserRole('');
   };
 
   const contextValue = {
@@ -137,7 +172,9 @@ function App() {
     maxCapacity,
     setMaxCapacity,
     isManagerAuthenticated,
+    userRole,
     loginManager,
+    loginKitchen,
     logoutManager
   };
 
@@ -148,6 +185,8 @@ function App() {
           <Routes>
             <Route path="/table/:tableId" element={<CustomerView />} />
             <Route path="/manager/*" element={<ManagerDashboard />} />
+            <Route path="/kitchen/dashboard" element={<KitchenDashboard />} />
+            <Route path="/kitchen/login" element={<KitchenLogin />} />
             <Route path="/login" element={<ManagerLogin />} />
             <Route path="/" element={<Navigate to="/manager/dashboard" replace />} />
           </Routes>

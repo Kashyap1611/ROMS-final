@@ -28,14 +28,18 @@ const ManagerLogin = () => {
       return;
     }
     setLoading(true);
-    const ok = await loginManager(email, password);
+    const role = await loginManager(email, password);
     setLoading(false);
-    if (!ok) {
+    if (!role) {
       toast.error('Invalid credentials');
       return;
     }
     toast.success('Login successful');
-    navigate('/manager/dashboard', { replace: true });
+    if (role === 'kitchen') {
+      navigate('/kitchen/dashboard', { replace: true });
+    } else {
+      navigate('/manager/dashboard', { replace: true });
+    }
   };
 
   const resetState = () => {
@@ -112,11 +116,16 @@ const ManagerLogin = () => {
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" />
           </div>
-          <div className="flex items-center justify-between">
-            <Button className="bg-primary" onClick={onLogin} disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+          <Button className="w-full bg-primary" onClick={onLogin} disabled={loading}>
+            {loading ? 'Logging in...' : 'Login as Manager'}
+          </Button>
+          <div className="flex flex-col gap-2 text-center">
+            <Button variant="link" size="sm" onClick={() => setShowForgot(true)} className="text-muted-foreground">
+              Forgot Password?
             </Button>
-            <Button variant="ghost" onClick={() => setShowForgot(true)}>Forgot password?</Button>
+            <Button variant="link" size="sm" onClick={() => navigate('/kitchen/login')} className="text-primary font-semibold">
+              Kitchen Login
+            </Button>
           </div>
         </CardContent>
       </Card>

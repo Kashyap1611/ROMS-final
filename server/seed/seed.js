@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import connectDB from "../config/db.js";
 import MenuItem from "../models/MenuItem.js";
 import Table from "../models/Table.js";
+import Kitchen from "../models/Kitchen.js";
+import Manager from "../models/Manager.js";
 
 dotenv.config();
 await connectDB();
@@ -73,6 +75,27 @@ const seed = async () => {
     if (tableCount === 0) {
       await Table.insertMany(defaultTables);
       console.log("✅ Tables seeded");
+    }
+
+    const kitchenCount = await Kitchen.countDocuments();
+    if (kitchenCount === 0) {
+      await Kitchen.create({
+        email: "kitchen@roms.com",
+        password: "kitchenpassword",
+        name: "Head Chef",
+      });
+      console.log("✅ Kitchen user seeded (kitchen@roms.com / kitchenpassword)");
+    }
+
+    const managerCount = await Manager.countDocuments();
+    if (managerCount === 0) {
+      await Manager.create({
+        email: "manager@roms.com",
+        password: "managerpassword",
+        name: "Main Manager",
+        role: "manager",
+      });
+      console.log("✅ Manager user seeded (manager@roms.com / managerpassword)");
     }
 
     console.log("🌱 Seeding completed");

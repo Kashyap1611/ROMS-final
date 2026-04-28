@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import managerRoutes from "./routes/managerRoutes.js";
+import kitchenRoutes from "./routes/kitchenRoutes.js";
 import menuRoutes from "./routes/menu.js";
 import tablesRoutes from "./routes/tables.js";
 import ordersRoutes from "./routes/orders.js";
@@ -33,6 +34,7 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/manager", managerRoutes);
+app.use("/api/kitchen", kitchenRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/tables", tablesRoutes);
 app.use("/api/orders", ordersRoutes);

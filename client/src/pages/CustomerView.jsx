@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { toast } from 'sonner';
-import { ShoppingCart, Plus, Minus, Utensils, Coffee, IceCream, CreditCard, Smartphone, Banknote, CheckCircle2, Clock, ClipboardList } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Utensils, Coffee, IceCream, CreditCard, Smartphone, IndianRupee, CheckCircle2, Clock, ClipboardList } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import axios from 'axios';
@@ -149,8 +149,8 @@ const CustomerView = () => {
         `#${idx + 1}`,
         it.name,
         it.quantity,
-        `$${it.price.toFixed(2)}`,
-        `$${(it.price * it.quantity).toFixed(2)}`,
+        `₹${it.price.toFixed(2)}`,
+        `₹${(it.price * it.quantity).toFixed(2)}`,
         it.status.charAt(0).toUpperCase() + it.status.slice(1)
       ]);
     });
@@ -163,9 +163,9 @@ const CustomerView = () => {
     const tax = computeGrandGst();
     const total = computeGrandTotal();
     const y = doc.lastAutoTable.finalY + 10;
-    doc.text(`Subtotal: $${subtotal.toFixed(2)}`, 14, y);
-    doc.text(`GST (${(gstRate*100).toFixed(0)}%): $${tax.toFixed(2)}`, 14, y + 6);
-    doc.text(`Total: $${total.toFixed(2)}`, 14, y + 12);
+    doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 14, y);
+    doc.text(`GST (${(gstRate*100).toFixed(0)}%): ₹${tax.toFixed(2)}`, 14, y + 6);
+    doc.text(`Total: ₹${total.toFixed(2)}`, 14, y + 12);
     doc.save(`invoice_table_${tableId}_${Date.now()}.pdf`);
   };
 
@@ -342,7 +342,7 @@ const CustomerView = () => {
                       <span className="text-muted-foreground">{new Date(b.timestamp).toLocaleTimeString()}</span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="font-medium">${b.total.toFixed(2)}</span>
+                      <span className="font-medium">₹{b.total.toFixed(2)}</span>
                     </div>
                   </div>
                   <Separator />
@@ -351,7 +351,7 @@ const CustomerView = () => {
                       <div key={iIdx} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <span className="font-medium">{it.quantity}x {it.name}</span>
-                          <span className="text-muted-foreground">${(it.price * it.quantity).toFixed(2)}</span>
+                          <span className="text-muted-foreground">₹{(it.price * it.quantity).toFixed(2)}</span>
                         </div>
                         <Badge className={
                           it.status === 'pending' ? 'bg-warning' :
@@ -367,7 +367,7 @@ const CustomerView = () => {
               ))}
               <div className="flex justify-end pt-2">
                 <div className="text-sm text-muted-foreground">
-                  Subtotal: <span className="font-medium">${computeGrandSubtotal().toFixed(2)}</span> • GST ({(gstRate*100).toFixed(0)}%): <span className="font-medium">${computeGrandGst().toFixed(2)}</span> • Total: <span className="font-bold text-primary">${computeGrandTotal().toFixed(2)}</span>
+                  Subtotal: <span className="font-medium">₹{computeGrandSubtotal().toFixed(2)}</span> • GST ({(gstRate*100).toFixed(0)}%): <span className="font-medium">₹{computeGrandGst().toFixed(2)}</span> • Total: <span className="font-bold text-primary">₹{computeGrandTotal().toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -423,7 +423,7 @@ const CustomerView = () => {
                 </div>
               </CardHeader>
               <CardFooter className="flex items-center justify-between pt-0">
-                <span className="text-xl font-bold text-primary">${item.price.toFixed(2)}</span>
+                <span className="text-xl font-bold text-primary">₹{item.price.toFixed(2)}</span>
                 <Button 
                   onClick={() => addToCart(item)} 
                   size="sm"
@@ -472,7 +472,7 @@ const CustomerView = () => {
                   <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-md" />
                   <div className="flex-1">
                     <h4 className="font-semibold">{item.name}</h4>
-                    <p className="text-sm text-muted-foreground">${item.price.toFixed(2)} each</p>
+                    <p className="text-sm text-muted-foreground">₹{item.price.toFixed(2)} each</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button 
@@ -492,7 +492,7 @@ const CustomerView = () => {
                     </Button>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-bold">₹{(item.price * item.quantity).toFixed(2)}</p>
                   </div>
                 </div>
               ))
@@ -505,16 +505,16 @@ const CustomerView = () => {
               <div className="space-y-2">
                 <div className="flex justify-between text-lg">
                   <span className="font-semibold">Subtotal</span>
-                  <span>${calculateCartTotal().toFixed(2)}</span>
+                  <span>₹{calculateCartTotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-lg">
                   <span className="font-semibold">GST ({(gstRate*100).toFixed(0)}%)</span>
-                  <span>${(calculateCartTotal() * (gstRate || 0)).toFixed(2)}</span>
+                  <span>₹{(calculateCartTotal() * (gstRate || 0)).toFixed(2)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-xl">
                   <span className="font-bold">Total</span>
-                  <span className="font-bold text-primary">${(calculateCartTotal() * (1 + (gstRate || 0))).toFixed(2)}</span>
+                  <span className="font-bold text-primary">₹{(calculateCartTotal() * (1 + (gstRate || 0))).toFixed(2)}</span>
                 </div>
               </div>
               
@@ -585,7 +585,7 @@ const CustomerView = () => {
                   className="flex flex-col h-auto py-4"
                   onClick={() => setPaymentMethod('cash')}
                 >
-                  <Banknote className="h-6 w-6 mb-2" />
+                  <IndianRupee className="h-6 w-6 mb-2" />
                   <span className="text-xs">Cash</span>
                 </Button>
               </div>
@@ -594,7 +594,7 @@ const CustomerView = () => {
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
                 <span>Total Amount</span>
-                <span className="font-bold text-lg text-primary">${computeGrandTotal().toFixed(2)}</span>
+                <span className="font-bold text-lg text-primary">₹{computeGrandTotal().toFixed(2)}</span>
               </div>
             </div>
           </div>
